@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Game — Smart Rate Bulucu</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+.container{max-width:940px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.5rem;margin-bottom:2px}
+.sub{color:#666;font-size:.82rem;margin-bottom:20px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:14px}
+.card h2{font-size:1rem;margin-bottom:12px;color:#4f46e5}
+.top-row{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.top-row label{font-size:.85rem;font-weight:600}
+.top-row input[type=number]{width:60px;padding:5px 6px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;text-align:center}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;transition:.2s}
+.btn-sm{padding:5px 12px;font-size:.8rem}
+.btn-primary{background:#4f46e5;color:#fff}.btn-primary:hover{background:#4338ca}
+.btn-primary:disabled{background:#a5b4fc;cursor:not-allowed}
+.btn-green{background:#10b981;color:#fff}.btn-green:hover{background:#059669}
+.level-grid{display:grid;gap:6px}
+.lv{display:grid;grid-template-columns:32px repeat(4,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.lv:last-child{border-bottom:none}
+.lv-num{background:#4f46e5;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700}
+.lv-field{display:flex;flex-direction:column;gap:2px}
+.lv-field label{font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.3px}
+.lv-field input{width:100%;padding:5px 6px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;text-align:center}
+.lv-info{font-size:.7rem;color:#999;text-align:center}
+.progress-bar{height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin:6px 0}
+.progress-fill{height:100%;background:#4f46e5;border-radius:3px;transition:width .3s;width:0%}
+.ptxt{font-size:.78rem;color:#666}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{text-align:center;padding:7px 6px;border-bottom:2px solid #e5e7eb;color:#888;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px}
+td{padding:8px 6px;border-bottom:1px solid #f0f0f0;text-align:center}
+tr.ok{background:#f0fdf4}
+tr.warn{background:#fffbeb}
+tr.fail{background:#fef2f2}
+.hidden{display:none}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
+.tg{background:#d1fae5;color:#065f46}.ty{background:#fef3c7;color:#92400e}.tr{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:8px;margin-top:14px}
+.smart-val{font-size:1.3rem;font-weight:800;color:#4f46e5}
+.warn-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:.8rem;color:#92400e;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Match Game — Smart Rate Bulucu</h1>
+<p class="sub">Her level icin parametreleri girin, sistem hedef win rate'e ulasmak icin gereken Smart% degerini bulur.</p>
+
+<div class="card">
+  <h2>Level Ayarlari</h2>
+  <div class="top-row">
+    <label>Level:</label>
+    <input type="number" id="nLv" min="1" max="30" value="3">
+    <button class="btn btn-primary btn-sm" onclick="buildUI()">Olustur</button>
+    <span style="flex:1"></span>
+    <label>Holder:</label>
+    <input type="number" id="holderCap" min="3" max="20" value="5">
+  </div>
+  <div class="level-grid">
+    <div class="lv" style="grid-template-columns:32px repeat(4,1fr) auto;border:none;padding-bottom:0">
+      <div></div>
+      <div style="text-align:center;font-size:.72rem;font-weight:700;color:#888">OBJE</div>
+      <div style="text-align:center;font-size:.72rem;font-weight:700;color:#888">RAF</div>
+      <div style="text-align:center;font-size:.72rem;font-weight:700;color:#888">TIP</div>
+      <div style="text-align:center;font-size:.72rem;font-weight:700;color:#888">HEDEF WIN%</div>
+      <div style="width:60px"></div>
+    </div>
+  </div>
+  <div id="lvInputs" class="level-grid"></div>
+</div>
+
+<button class="btn btn-primary" id="calcBtn" onclick="go()" style="width:100%">Smart% Hesapla</button>
+
+<div class="card hidden" id="progCard">
+  <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+  <div class="ptxt" id="pTxt">Hazirlaniyor...</div>
+</div>
+
+<div class="card hidden" id="resCard">
+  <h2>Sonuclar</h2>
+  <table>
+    <thead><tr>
+      <th>Level</th><th>Obje</th><th>Raf</th><th>Sira/Raf</th><th>Tip</th><th>Smart%</th><th>Gercek Win%</th><th>Durum</th>
+    </tr></thead>
+    <tbody id="resBody"></tbody>
+  </table>
+  <div class="actions">
+    <button class="btn btn-green" onclick="dlJSON()">JSON Indir</button>
+  </div>
+</div>
+</div>
+
+<script>
+const W=`
+function sh(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function td(n,g){const b=Math.floor(g/n),r=g%n;return Array.from({length:n},(_,i)=>(b+(i<r?1:0))*3)}
+
+function mkA(tc,ns,tg){
+  const bR=Math.floor(tg/ns),ext=tg%ns;
+  const o=[];for(let t=0;t<tc.length;t++)for(let i=0;i<tc[t];i++)o.push(t);sh(o);
+  const sv=[];let x=0;
+  for(let s=0;s<ns;s++){const shelf=[];const rows=bR+(s<ext?1:0);for(let r=0;r<rows;r++){shelf.push(o.slice(x,x+3));x+=3}sv.push(shelf)}
+  return sv;
+}
+
+function sp(pool,sv,at,hold){
+  const ac={},hc={};
+  for(const s of sv)if(s.length)for(const o of s[0])ac[o]=(ac[o]||0)+1;
+  for(const h of hold)hc[h]=(hc[h]||0)+1;
+  let bt=null,bs=-1;const sn=new Set();
+  for(const t of pool){if(sn.has(t))continue;sn.add(t);
+    let sc=(ac[t]||0)*10+(hc[t]||0)*20;if(at.has(t))sc-=5;
+    if(sc>bs){bs=sc;bt=t}}
+  return bt;
+}
+
+function sim(shT,tc,sP,mh){
+  const s=shT.map(x=>x.map(r=>[...r]));
+  const pool=[];for(let t=0;t<tc.length;t++)for(let i=0;i<tc[t]/3;i++)pool.push(t);
+  const act=[],hold=[],NA=2;
+  function nx(){
+    if(!pool.length)return null;
+    if(Math.random()*100<sP){const at=new Set(act.map(a=>a[0]));
+      const t=sp(pool,s,at,hold);if(t!=null){const i=pool.indexOf(t);if(i>=0){pool.splice(i,1);return t}}}
+    return pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+  }
+  while(act.length<NA&&pool.length){const t=nx();if(t!=null)act.push([t,3])}
+  function settle(){
+    while(true){let ad=false,i=0;
+      while(i<act.length){if(act[i][1]<=0){act.splice(i,1);const t=nx();if(t!=null){act.push([t,3]);ad=true}}else i++}
+      while(act.length<NA&&pool.length){const t=nx();if(t!=null){act.push([t,3]);ad=true}}
+      if(!ad)break;
+      for(const a of act){const rm=[];for(let j=0;j<hold.length;j++){if(hold[j]===a[0]&&a[1]>0){a[1]--;rm.push(j)}}
+        for(let j=rm.length-1;j>=0;j--)hold.splice(rm[j],1)}}
+  }
+  while(true){
+    const ac=[];for(let si=0;si<s.length;si++)if(s[si].length)for(let pi=0;pi<s[si][0].length;pi++)ac.push([si,pi,s[si][0][pi]]);
+    if(!ac.length)return true;
+    const at=new Set();for(const a of act)if(a[1]>0)at.add(a[0]);
+    let best=null,bs=-1;
+    for(const[si,pi,o]of ac){if(!at.has(o))continue;let sc=0;
+      for(const a of act){if(a[0]===o&&a[1]>0){if(a[1]===1)sc+=100;break}}
+      if(s[si][0].length===1&&s[si].length>1)for(const x of s[si][1])if(at.has(x))sc+=5;
+      if(sc>bs){bs=sc;best=[si,pi,o]}}
+    if(best){const[si,pi,o]=best;s[si][0].splice(pi,1);if(!s[si][0].length)s[si].shift();
+      for(const a of act){if(a[0]===o&&a[1]>0){a[1]--;break}}settle();continue}
+    const bc={};for(const shelf of s)for(const r of shelf)for(const o of r)bc[o]=(bc[o]||0)+1;
+    best=null;bs=-9999;
+    for(const[si,pi,o]of ac){let sc=(bc[o]||0)*0.1;
+      if(s[si][0].length===1&&s[si].length>1)for(const x of s[si][1])if(at.has(x))sc+=10;
+      sc-=s[si][0].length*0.05;if(sc>bs){bs=sc;best=[si,pi,o]}}
+    const[si,pi,o]=best;s[si][0].splice(pi,1);if(!s[si][0].length)s[si].shift();
+    hold.push(o);if(hold.length>=mh)return false;settle();
+  }
+}
+
+function ev(ns,tg,nt,sp2,mh,nA,nS){
+  const tc=td(nt,tg);let w=0,t2=0;
+  for(let a=0;a<nA;a++){const s2=mkA(tc,ns,tg);for(let i=0;i<nS;i++){if(sim(s2,tc,sp2,mh))w++;t2++}}
+  return w/t2*100;
+}
+
+function findSmart(totalObj,ns,nt,targetWR,mh){
+  const tg=totalObj/3;
+  if(tg<ns)return{err:'Satir sayisi raf sayisindan az',smartPct:null,winRate:null};
+  if(nt>tg)return{err:'Tip sayisi toplam gruptan fazla',smartPct:null,winRate:null};
+
+  // Quick check: does 100% smart even reach target?
+  const maxWR=ev(ns,tg,nt,100,mh,8,100);
+  if(maxWR<targetWR-10)return{err:'100% smart bile hedefe ulasamiyor (max ~%'+Math.round(maxWR)+')',smartPct:100,winRate:Math.round(maxWR*10)/10};
+
+  // Quick check: does 0% smart already exceed target?
+  const minWR=ev(ns,tg,nt,0,mh,8,100);
+  if(minWR>targetWR+10)return{err:'0% smart bile hedefin ustunde (min ~%'+Math.round(minWR)+')',smartPct:0,winRate:Math.round(minWR*10)/10};
+
+  // Binary search
+  let lo=0,hi=100,bP=50,bD=999;
+  for(let it=0;it<10;it++){
+    const mid=(lo+hi)/2;
+    self.postMessage({type:'iter',it:it+1});
+    const wr=ev(ns,tg,nt,mid,mh,8,100);
+    if(Math.abs(wr-targetWR)<bD){bD=Math.abs(wr-targetWR);bP=mid}
+    if(wr<targetWR)lo=mid;else hi=mid;
+  }
+
+  // Verify
+  self.postMessage({type:'verify'});
+  const vWR=ev(ns,tg,nt,bP,mh,20,200);
+  return{err:null,smartPct:Math.round(bP*10)/10,winRate:Math.round(vWR*10)/10};
+}
+
+self.onmessage=function(e){
+  const{levels}=e.data;const all=[];
+  for(let i=0;i<levels.length;i++){
+    const lv=levels[i];
+    self.postMessage({type:'lvStart',lv:i+1,total:levels.length});
+    const r=findSmart(lv.objects,lv.shelves,lv.types,lv.targetWR,lv.holderCap);
+    all.push({level:i+1,...lv,...r});
+    self.postMessage({type:'lvDone',lv:i+1});
+  }
+  self.postMessage({type:'done',all});
+};
+`;
+
+let worker=null,finalRes=null;
+
+function buildUI(){
+  const n=Math.max(1,Math.min(30,+document.getElementById('nLv').value||3));
+  document.getElementById('nLv').value=n;
+  const c=document.getElementById('lvInputs');c.innerHTML='';
+  for(let i=1;i<=n;i++){
+    const d=document.createElement('div');d.className='lv';
+    const defObj=Math.min(189,63+Math.round((i-1)/Math.max(1,n-1)*126));
+    const near=Math.round(defObj/3)*3;
+    d.innerHTML=`
+      <div class="lv-num">${i}</div>
+      <div class="lv-field"><input type="number" min="9" max="900" step="3" value="${near}" id="ob_${i}"></div>
+      <div class="lv-field"><input type="number" min="1" max="30" value="${Math.min(21,Math.max(7,Math.round(near/9)))}" id="rf_${i}"></div>
+      <div class="lv-field"><input type="number" min="1" max="60" value="${Math.min(20,Math.max(3,Math.round(near/9)))}" id="tp_${i}"></div>
+      <div class="lv-field"><input type="number" min="5" max="95" step="5" value="25" id="wr_${i}"></div>
+      <div class="lv-info" id="info_${i}"></div>`;
+    c.appendChild(d);
+    updateInfo(i);
+    document.getElementById('ob_'+i).addEventListener('input',()=>updateInfo(i));
+    document.getElementById('rf_'+i).addEventListener('input',()=>updateInfo(i));
+  }
+}
+
+function updateInfo(i){
+  const obj=+document.getElementById('ob_'+i).value||0;
+  const rf=+document.getElementById('rf_'+i).value||1;
+  const tg=Math.floor(obj/3);
+  if(tg<rf){document.getElementById('info_'+i).textContent='⚠ az obje';return}
+  const bR=Math.floor(tg/rf),ext=tg%rf;
+  const rowTxt=ext?bR+'-'+(bR+1):bR;
+  document.getElementById('info_'+i).textContent=rowTxt+' sira/raf';
+}
+
+function go(){
+  const n=+document.getElementById('nLv').value;
+  const hc=+document.getElementById('holderCap').value||5;
+  const levels=[];
+  for(let i=1;i<=n;i++){
+    let obj=+document.getElementById('ob_'+i).value;
+    if(obj%3!==0)obj=Math.round(obj/3)*3;
+    levels.push({
+      objects:Math.max(9,obj),
+      shelves:Math.max(1,+document.getElementById('rf_'+i).value),
+      types:Math.max(1,+document.getElementById('tp_'+i).value),
+      targetWR:Math.max(1,Math.min(99,+document.getElementById('wr_'+i).value)),
+      holderCap:hc
+    });
+  }
+  document.getElementById('calcBtn').disabled=true;
+  document.getElementById('progCard').classList.remove('hidden');
+  document.getElementById('resCard').classList.add('hidden');
+  document.getElementById('pFill').style.width='0%';
+  document.getElementById('pTxt').textContent='Hazirlaniyor...';
+
+  if(worker)worker.terminate();
+  const blob=new Blob([W],{type:'application/javascript'});
+  worker=new Worker(URL.createObjectURL(blob));
+  let curLv=0;
+  worker.onmessage=function(e){
+    const d=e.data;
+    if(d.type==='lvStart'){curLv=d.lv;document.getElementById('pTxt').textContent='Level '+d.lv+'/'+d.total+'...';}
+    if(d.type==='iter'){document.getElementById('pFill').style.width=(((curLv-1)/levels.length+d.it/12/levels.length)*100)+'%';}
+    if(d.type==='verify'){document.getElementById('pTxt').textContent='Level '+curLv+' dogrulanıyor...';}
+    if(d.type==='lvDone'){document.getElementById('pFill').style.width=(d.lv/levels.length*100)+'%';}
+    if(d.type==='done'){
+      finalRes=d.all;render(d.all);
+      document.getElementById('calcBtn').disabled=false;
+      document.getElementById('progCard').classList.add('hidden');
+      document.getElementById('resCard').classList.remove('hidden');
+    }
+  };
+  worker.postMessage({levels});
+}
+
+function render(all){
+  const tb=document.getElementById('resBody');tb.innerHTML='';
+  for(const r of all){
+    const tg=r.objects/3;
+    const bR=Math.floor(tg/r.shelves),ext=tg%r.shelves;
+    const rowTxt=ext?bR+'-'+(bR+1):''+bR;
+    const tr=document.createElement('tr');
+    if(r.err){
+      tr.className='fail';
+      tr.innerHTML=`<td>${r.level}</td><td>${r.objects}</td><td>${r.shelves}</td><td>${rowTxt}</td><td>${r.types}</td>
+        <td>${r.smartPct!=null?'<span class="smart-val">%'+r.smartPct.toFixed(1)+'</span>':'-'}</td>
+        <td>${r.winRate!=null?'%'+r.winRate.toFixed(1):'-'}</td>
+        <td><span class="tag tr">${r.err}</span></td>`;
+    } else {
+      const diff=Math.abs(r.winRate-r.targetWR);
+      const cls=diff<3?'ok':diff<6?'warn':'fail';
+      const tag=diff<3?'<span class="tag tg">Isabetli</span>':diff<6?'<span class="tag ty">Yakin</span>':'<span class="tag tr">Uzak</span>';
+      tr.className=cls;
+      tr.innerHTML=`<td>${r.level}</td><td>${r.objects}</td><td>${r.shelves}</td><td>${rowTxt}</td><td>${r.types}</td>
+        <td><span class="smart-val">%${r.smartPct.toFixed(1)}</span></td>
+        <td>%${r.winRate.toFixed(1)}</td><td>${tag}</td>`;
+    }
+    tb.appendChild(tr);
+  }
+}
+
+function dlJSON(){
+  if(!finalRes)return;
+  const out={generatedAt:new Date().toISOString(),holder_capacity:+document.getElementById('holderCap').value||5,levels:[]};
+  for(const r of finalRes){
+    if(r.err||r.smartPct==null)continue;
+    const tg=r.objects/3;
+    const tc=tDist(r.types,tg);
+    const bR=Math.floor(tg/r.shelves),ext=tg%r.shelves;
+    const objs=[];for(let t=0;t<tc.length;t++)for(let i=0;i<tc[t];i++)objs.push(t);
+    sArr(objs);
+    const shelves=[];let idx=0;
+    for(let s=0;s<r.shelves;s++){const nR=bR+(s<ext?1:0);const rows=[];
+      for(let ri=0;ri<nR;ri++){rows.push(objs.slice(idx,idx+3).map(t=>'type_'+t));idx+=3}
+      shelves.push({shelf_id:s+1,rows})}
+    out.levels.push({
+      level:r.level,
+      config:{total_objects:r.objects,num_shelves:r.shelves,rows_min:bR,rows_max:bR+(ext>0?1:0),
+        num_types:r.types,smart_objective_pct:r.smartPct,holder_capacity:r.holderCap,
+        active_objectives:2,expected_win_rate:r.winRate,target_win_rate:r.targetWR},
+      type_distribution:Object.fromEntries(tc.map((c,t)=>['type_'+t,c])),
+      shelves
+    });
+  }
+  const bl=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='level_config.json';a.click();
+}
+
+function tDist(n,g){const b=Math.floor(g/n),r=g%n;return Array.from({length:n},(_,i)=>(b+(i<r?1:0))*3)}
+function sArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}}
+
+buildUI();
+</script>
+</body>
+</html>
